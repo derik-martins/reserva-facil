@@ -10,6 +10,16 @@ import { Reservations } from './pages/Reservations';
 import { UserManagement } from './pages/UserManagement';
 import { useAuth } from './lib/AuthContext';
 import { PrivateRoute } from './components/PrivateRoute';
+import { UNSAFE_NavigationContext } from 'react-router-dom';
+
+// Configurar flags do React Router v7
+const router = UNSAFE_NavigationContext.router;
+if (router) {
+  router.future = {
+    v7_startTransition: true,
+    v7_relativeSplatPath: true
+  };
+}
 
 function App() {
   const { user } = useAuth();
@@ -49,7 +59,7 @@ function App() {
           <Route 
             path="/admin/users" 
             element={
-              <PrivateRoute>
+              <PrivateRoute requireAdmin>
                 <UserManagement />
               </PrivateRoute>
             } 

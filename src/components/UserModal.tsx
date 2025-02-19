@@ -59,6 +59,7 @@ export function UserModal({ isOpen, onClose, onSuccess, editingUser }: UserModal
             {
               id: authData.user!.id,
               name: formData.name,
+              email: formData.email,
               is_admin: formData.is_admin,
             },
           ]);

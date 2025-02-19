@@ -25,7 +25,12 @@ export function Navbar() {
         .eq('id', user?.id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao verificar status de admin:', error);
+        setIsAdmin(false);
+        return;
+      }
+
       setIsAdmin(data?.is_admin || false);
     } catch (error) {
       console.error('Erro ao verificar status de admin:', error);
@@ -34,8 +39,12 @@ export function Navbar() {
   }
 
   const handleLogout = async () => {
-    await signOut();
-    navigate('/login');
+    try {
+      await signOut();
+      navigate('/login');
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    }
   };
 
   const isActive = (path: string) => location.pathname === path;

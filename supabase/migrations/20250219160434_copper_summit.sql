@@ -125,3 +125,18 @@ CREATE INDEX idx_reservations_user ON reservations(user_id);
 CREATE INDEX idx_reservations_resource ON reservations(resource_id);
 CREATE INDEX idx_reservations_time ON reservations(start_time, end_time);
 CREATE INDEX idx_profiles_admin ON profiles(is_admin);
+
+-- Criar função para criar perfil automaticamente
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, name, is_admin)
+  VALUES (new.id, COALESCE(new.raw_user_meta_data->>'name', 'Usuário'), false);
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Criar trigger para novos usuários
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();

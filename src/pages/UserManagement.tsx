@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { User, Mail, Trash2, Shield } from 'lucide-react';
+import { User, Mail, Trash2, Shield, UserPlus, Edit } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/Button';
 import { useAuth } from '../lib/AuthContext';
 import { Navigate } from 'react-router-dom';
+import { UserModal } from '../components/UserModal';
 
 interface Profile {
   id: string;
@@ -17,8 +18,10 @@ interface Profile {
 export function UserManagement() {
   const [users, setUsers] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, navigate } = useAuth();
   const [currentUserIsAdmin, setCurrentUserIsAdmin] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<Profile | undefined>();
 
   useEffect(() => {
     checkAdminStatus();
@@ -33,11 +36,23 @@ export function UserManagement() {
         .eq('id', user?.id)
         .single();
 
-      if (error) throw error;
-      setCurrentUserIsAdmin(data?.is_admin || false);
+      if (error) {
+        console.error('Erro ao verificar status de admin:', error);
+        setCurrentUserIsAdmin(false);
+        navigate('/dashboard');
+        return;
+      }
+
+      const isAdmin = data?.is_admin || false;
+      setCurrentUserIsAdmin(isAdmin);
+
+      if (!isAdmin) {
+        navigate('/dashboard');
+      }
     } catch (error) {
       console.error('Erro ao verificar status de admin:', error);
       setCurrentUserIsAdmin(false);
+      navigate('/dashboard');
     }
   }
 
@@ -48,9 +63,14 @@ export function UserManagement() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao carregar usuários:', error);
+        throw error;
+      }
+
       setUsers(data || []);
     } catch (error) {
+      console.error('Erro ao carregar usuários:', error);
       toast.error('Erro ao carregar usuários.');
     } finally {
       setIsLoading(false);
@@ -61,12 +81,18 @@ export function UserManagement() {
     if (!window.confirm('Tem certeza que deseja excluir este usuário?')) return;
 
     try {
-      const { error } = await supabase
+      // Primeiro deletar o perfil
+      const { error: profileError } = await supabase
         .from('profiles')
         .delete()
         .eq('id', userId);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
+
+      // Depois deletar o usuário da autenticação
+      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+
+      if (authError) throw authError;
       
       toast.success('Usuário excluído com sucesso!');
       loadUsers();
@@ -91,9 +117,15 @@ export function UserManagement() {
     }
   }
 
-  if (!currentUserIsAdmin) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  const handleEditUser = (user: Profile) => {
+    setEditingUser(user);
+    setIsModalOpen(true);
+  };
+
+  const handleAddUser = () => {
+    setEditingUser(undefined);
+    setIsModalOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -112,6 +144,10 @@ export function UserManagement() {
             Gerencie todos os usuários do sistema
           </p>
         </div>
+        <Button onClick={handleAddUser}>
+          <UserPlus className="w-4 h-4 mr-2" />
+          Novo Usuário
+        </Button>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -172,6 +208,13 @@ export function UserManagement() {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end gap-2">
                       <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleEditUser(profile)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
                         variant={profile.is_admin ? "warning" : "primary"}
                         size="sm"
                         onClick={() => toggleAdmin(profile.id, profile.is_admin)}
@@ -193,6 +236,16 @@ export function UserManagement() {
           </table>
         </div>
       </div>
+
+      <UserModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingUser(undefined);
+        }}
+        onSuccess={loadUsers}
+        editingUser={editingUser}
+      />
     </div>
   );
 } 
