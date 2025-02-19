@@ -7,6 +7,7 @@ import { Register } from './pages/Register';
 import { Home } from './pages/Home';
 import { Resources } from './pages/Resources';
 import { Reservations } from './pages/Reservations';
+import { UserManagement } from './pages/UserManagement';
 import { useAuth } from './lib/AuthContext';
 import { PrivateRoute } from './components/PrivateRoute';
 
@@ -42,6 +43,14 @@ function App() {
             element={
               <PrivateRoute>
                 <Reservations />
+              </PrivateRoute>
+            } 
+          />
+          <Route 
+            path="/admin/users" 
+            element={
+              <PrivateRoute>
+                <UserManagement />
               </PrivateRoute>
             } 
           />

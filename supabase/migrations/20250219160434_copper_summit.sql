@@ -32,7 +32,8 @@
 CREATE TABLE profiles (
   id uuid PRIMARY KEY REFERENCES auth.users,
   name text NOT NULL,
-  created_at timestamptz DEFAULT now()
+  created_at timestamptz DEFAULT now(),
+  is_admin BOOLEAN DEFAULT FALSE
 );
 
 -- Create resources table
@@ -94,7 +95,33 @@ CREATE POLICY "Users can update their own reservations"
   TO authenticated
   USING (user_id = auth.uid());
 
+-- Adicionar coluna is_admin na tabela profiles
+ALTER TABLE profiles ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;
+
+-- Criar políticas para administradores
+CREATE POLICY "Admins can do everything"
+  ON profiles FOR ALL
+  TO authenticated
+  USING (auth.uid() IN (
+    SELECT id FROM profiles WHERE is_admin = true
+  ));
+
+CREATE POLICY "Admins can manage all resources"
+  ON resources FOR ALL
+  TO authenticated
+  USING (auth.uid() IN (
+    SELECT id FROM profiles WHERE is_admin = true
+  ));
+
+CREATE POLICY "Admins can manage all reservations"
+  ON reservations FOR ALL
+  TO authenticated
+  USING (auth.uid() IN (
+    SELECT id FROM profiles WHERE is_admin = true
+  ));
+
 -- Create indexes
 CREATE INDEX idx_reservations_user ON reservations(user_id);
 CREATE INDEX idx_reservations_resource ON reservations(resource_id);
 CREATE INDEX idx_reservations_time ON reservations(start_time, end_time);
+CREATE INDEX idx_profiles_admin ON profiles(is_admin);
